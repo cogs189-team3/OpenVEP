@@ -5,6 +5,7 @@ from scipy import signal
 import random, os, pickle
 import mne
 
+cyton_in = False
 lsl_out = False
 width = 1536
 height = 864
