@@ -5,7 +5,6 @@ from scipy import signal
 import random, os, pickle
 import mne
 
-cyton_in = True
 lsl_out = False
 width = 1536
 height = 864
@@ -153,7 +152,7 @@ window = visual.Window(
         size = [width,height],
         checkTiming = True,
         allowGUI = False,
-        fullscr = True,
+        fullscr = False,
         useRetina = False,
     )
 # visual_stimulus = create_32_targets(checkered=False, elementTex=text_strip, elementMask=el_mask, phases=phases)

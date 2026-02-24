@@ -3,9 +3,9 @@ from psychopy.hardware import keyboard
 import numpy as np
 from scipy import signal
 import random, os, pickle
-import mne
+# import mne
 
-cyton_in = True
+cyton_in = False # Set to True to enable OpenBCI Cyton board input, False to run in "offline" mode without EEG input (stimulus only)
 lsl_out = False
 width = 1536
 height = 864
@@ -34,24 +34,33 @@ import psychopy.event
 from psychopy import core
 
 letters = 'QAZ⤒WSX,EDC?R⌫FVT⎵GBYHN.UJMPIKOL'
-win = psychopy.visual.Window(
-        size=(800, 800),
-        units="norm",
-        fullscr=False)
+# win = psychopy.visual.Window(
+#         size=(800, 800),
+#         units="norm",
+#         fullscr=False)
+
+window = visual.Window(
+        size = [width,height],
+        checkTiming = True,
+        allowGUI = False,
+        fullscr = False,
+        useRetina = False,
+    )
+
 n_text = 32
 text_cap_size = 64 #119  # 34
 text_strip_height = n_text * text_cap_size
 text_strip = np.full((text_strip_height, text_cap_size), np.nan)
-text = psychopy.visual.TextStim(win=win, height=0.145, font="Helvetica") # font="Courier"
-cap_rect_norm = [-(text_cap_size / 2.0) / (win.size[0] / 2.0),  # left
-                     +(text_cap_size / 2.0) / (win.size[1] / 2.0),  # top
-                     +(text_cap_size / 2.0) / (win.size[0] / 2.0),  # right
-                     -(text_cap_size / 2.0) / (win.size[1] / 2.0)]  # bottom
+text = visual.TextStim(win=window, height=0.145, font="Helvetica") # font="Courier"
+cap_rect_norm = [-(text_cap_size / 2.0) / (window.size[0] / 2.0),  # left
+                     +(text_cap_size / 2.0) / (window.size[1] / 2.0),  # top
+                     +(text_cap_size / 2.0) / (window.size[0] / 2.0),  # right
+                     -(text_cap_size / 2.0) / (window.size[1] / 2.0)]  # bottom
 # capture the rendering of each letter
 for (i_letter, letter) in enumerate(letters):
     text.text = letter.upper()
-    buff = psychopy.visual.BufferImageStim(
-        win=win,
+    buff = visual.BufferImageStim(
+        win=window,
         stim=[text],
         rect=cap_rect_norm)
     i_rows = slice(i_letter * text_cap_size,
@@ -85,7 +94,7 @@ phase_inc = (text_cap_size) / float(new_size)
 phases = np.array([
     (0.0, base_phase - i_letter * phase_inc)
     for i_letter in range(n_text)])
-win.close()
+# win.close()
 print(text_strip.shape, el_mask.shape, phases.shape)
 
 # =============================================================================
@@ -122,13 +131,23 @@ def create_32_targets(size=2/8*0.7, colors=None, checkered=False, elementTex=Non
                                    sizes=[size, size * aspect_ratio], xys=positions, phases=phases, colors=colors)
     return keys
 
-def create_32_key_caps(size=2/8*0.7, colors=[-1, -1, -1] * 32):
+def create_32_key_caps(size=2/8*0.7):
     width, height = window.size
-    aspect_ratio = width/height
     positions = create_32_target_positions(size)
     positions = [[pos[0]*width/2, pos[1]*height/2] for pos in positions]
-    keys = visual.ElementArrayStim(window, nElements=32, elementTex=text_strip, elementMask=el_mask, units='pix',
-                                   sizes=text_strip.shape, xys=positions, phases=phases, colors=colors)
+
+    keys = visual.ElementArrayStim(
+        window,
+        nElements=32,
+        elementTex=text_strip,
+        elementMask=el_mask,
+        units='pix',
+        sizes=[text_cap_size, text_cap_size],
+        xys=positions,
+        phases=phases,
+        colors=np.ones((32,3)) 
+    )
+
     return keys
 
 def checkered_texure():
@@ -163,13 +182,13 @@ def create_trial_sequence(n_per_class, classes=[(7.5, 0), (8.57, 0), (10, 0), (1
     return seq
 
 keyboard = keyboard.Keyboard()
-window = visual.Window(
-        size = [width,height],
-        checkTiming = True,
-        allowGUI = False,
-        fullscr = True,
-        useRetina = False,
-    )
+# window = visual.Window(
+#         size = [width,height],
+#         checkTiming = True,
+#         allowGUI = False,
+#         fullscr = False,
+#         useRetina = False,
+#     )
 visual_stimulus = create_32_targets(checkered=False)
 key_caps = create_32_key_caps()
 photosensor_dot = create_photosensor_dot()
@@ -338,6 +357,7 @@ if calibration_mode:
                 # --- BLUE/YELLOW COLOR FLICKER ---
                 visual_stimulus.colors = get_frame_colors(stimulus_frames[i_frame])
                 visual_stimulus.draw()
+                key_caps.draw() 
                 photosensor_dot.color = np.array([1, 1, 1])
                 photosensor_dot.draw()
                 trial_text.draw()
@@ -415,13 +435,15 @@ else:
             next_flip = window.getFutureFlipTime()
             keys = keyboard.getKeys()
             if 'escape' in keys:
-                stop_event.set()
-                board.stop_stream()
-                board.release_session()
+                if cyton_in:
+                    stop_event.set()
+                    board.stop_stream()
+                    board.release_session()
                 core.quit()
             # --- BLUE/YELLOW COLOR FLICKER ---
             visual_stimulus.colors = get_frame_colors(stimulus_frames[i_frame])
             visual_stimulus.draw()
+            key_caps.draw() 
             photosensor_dot.color = np.array([1, 1, 1])
             photosensor_dot.draw()
             if core.getTime() > next_flip and i_frame != 0:
@@ -474,6 +496,7 @@ else:
             shift = True
         if len(pred_text_string) > 74:
             pred_text_string = pred_text_string[-74:]
-    stop_event.set()
-    board.stop_stream()
-    board.release_session()
+    if cyton_in:
+        stop_event.set()
+        board.stop_stream()
+        board.release_session()
