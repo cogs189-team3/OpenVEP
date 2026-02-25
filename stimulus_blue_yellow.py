@@ -56,7 +56,9 @@ for (i_letter, letter) in enumerate(letters):
         rect=cap_rect_norm)
     i_rows = slice(i_letter * text_cap_size,
                     i_letter * text_cap_size + text_cap_size)
-    text_strip[i_rows, :] = (np.flipud(np.array(buff.image)[..., 0]) / 255.0 * 2.0 - 1.0)
+    img = np.array(buff.image)[..., 0]
+    img_padded = np.pad(img, ((0, text_cap_size - img.shape[0]), (0, text_cap_size - img.shape[1])), mode='constant')
+    text_strip[i_rows, :] = (np.flipud(img_padded) / 255.0 * 2.0 - 1.0)
 # need to pad 'text_strip' to pow2 to use as a texture
 new_size = max([int(np.power(2, np.ceil(np.log(dim_size) / np.log(2))))
                 for dim_size in text_strip.shape])
@@ -106,7 +108,7 @@ YELLOW = np.array([ 1,  1, -1])
 key_colors = np.array([
     BLUE if (i // 4) % 2 == 0 else YELLOW
     for i in range(32)
-])  # shape (32, 3)
+], dtype=float)  # shape (32, 3)
 
 def create_32_targets(size=2/8*0.7, colors=None, checkered=False, elementTex=None, elementMask=None, phases=None):
     width, height = window.size
@@ -304,11 +306,8 @@ aim_target_color = 'white'
 
 # Helper: build color array for the current frame using blue/yellow colors
 def get_frame_colors(frame_val_array):
-    # frame_val_array: shape (32,), values -1 or 1
-    # key_colors: shape (32, 3)
-    # When frame value is 1  -> show the key's color
-    # When frame value is -1 -> show black (inverted color)
-    return key_colors * frame_val_array[:, np.newaxis]  # shape (32, 3)
+    colors = np.where(frame_val_array[:, np.newaxis] > 0, key_colors, np.full((32,3), -1.0))
+    return colors
 
 # "Off" state: all keys black
 off_colors = np.full((32, 3), -1.0)

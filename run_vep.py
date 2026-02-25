@@ -56,7 +56,9 @@ for (i_letter, letter) in enumerate(letters):
         rect=cap_rect_norm)
     i_rows = slice(i_letter * text_cap_size,
                     i_letter * text_cap_size + text_cap_size)
-    text_strip[i_rows, :] = (np.flipud(np.array(buff.image)[..., 0]) / 255.0 * 2.0 - 1.0)
+    img = np.array(buff.image)[..., 0]
+    img_padded = np.pad(img, ((0, text_cap_size - img.shape[0]), (0, text_cap_size - img.shape[1])), mode='constant')
+    text_strip[i_rows, :] = (np.flipud(img_padded) / 255.0 * 2.0 - 1.0)
 # need to pad 'text_strip' to pow2 to use as a texture
 new_size = max([int(np.power(2, np.ceil(np.log(dim_size) / np.log(2))))
                 for dim_size in text_strip.shape])
