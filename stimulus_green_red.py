@@ -5,7 +5,7 @@ from scipy import signal
 import random, os, pickle
 import mne
 
-cyton_in = True
+cyton_in = False
 lsl_out = False
 width = 1536
 height = 864
@@ -39,10 +39,10 @@ win = psychopy.visual.Window(
         units="norm",
         fullscr=False)
 n_text = 32
-text_cap_size = 64 #119  # 34
+text_cap_size = 128
 text_strip_height = n_text * text_cap_size
 text_strip = np.full((text_strip_height, text_cap_size), np.nan)
-text = psychopy.visual.TextStim(win=win, height=0.145, font="Helvetica") # font="Courier"
+text = psychopy.visual.TextStim(win=win, height=0.08, font="Helvetica") # font="Courier"
 cap_rect_norm = [-(text_cap_size / 2.0) / (win.size[0] / 2.0),  # left
                      +(text_cap_size / 2.0) / (win.size[1] / 2.0),  # top
                      +(text_cap_size / 2.0) / (win.size[0] / 2.0),  # right
@@ -56,7 +56,9 @@ for (i_letter, letter) in enumerate(letters):
         rect=cap_rect_norm)
     i_rows = slice(i_letter * text_cap_size,
                     i_letter * text_cap_size + text_cap_size)
-    text_strip[i_rows, :] = (np.flipud(np.array(buff.image)[..., 0]) / 255.0 * 2.0 - 1.0)
+    img = np.array(buff.image)[..., 0]
+    img_padded = np.pad(img, ((0, text_cap_size - img.shape[0]), (0, text_cap_size - img.shape[1])), mode='constant')
+    text_strip[i_rows, :] = (np.flipud(img_padded) / 255.0 * 2.0 - 1.0)
 # need to pad 'text_strip' to pow2 to use as a texture
 new_size = max([int(np.power(2, np.ceil(np.log(dim_size) / np.log(2))))
                 for dim_size in text_strip.shape])
@@ -106,7 +108,7 @@ RED   = np.array([ 1, -1, -1])
 key_colors = np.array([
     GREEN if (i // 4) % 2 == 0 else RED
     for i in range(32)
-])  # shape (32, 3)
+], dtype=float)  # shape (32, 3)
 
 def create_32_targets(size=2/8*0.7, colors=None, checkered=False, elementTex=None, elementMask=None, phases=None):
     width, height = window.size
@@ -123,12 +125,22 @@ def create_32_targets(size=2/8*0.7, colors=None, checkered=False, elementTex=Non
     return keys
 
 def create_32_key_caps(size=2/8*0.7, colors=[-1, -1, -1] * 32):
-    width, height = window.size
-    aspect_ratio = width/height
+    # clientSize gives the drawable area of the window in pixels, which is needed to position the key caps correctly
+    w, h = window.clientSize  
+    aspect_ratio = w / h
     positions = create_32_target_positions(size)
-    positions = [[pos[0]*width/2, pos[1]*height/2] for pos in positions]
-    keys = visual.ElementArrayStim(window, nElements=32, elementTex=text_strip, elementMask=el_mask, units='pix',
-                                   sizes=text_strip.shape, xys=positions, phases=phases, colors=colors)
+    positions = [[pos[0]*w/2, pos[1]*h/2] for pos in positions]
+    keys = visual.ElementArrayStim(
+        window,
+        nElements=32,
+        elementTex=text_strip,
+        elementMask=el_mask,
+        units='pix',
+        sizes=text_strip.shape,
+        xys=positions,
+        phases=phases,
+        colors=colors
+    )
     return keys
 
 def checkered_texure():
@@ -165,10 +177,10 @@ def create_trial_sequence(n_per_class, classes=[(7.5, 0), (8.57, 0), (10, 0), (1
 keyboard = keyboard.Keyboard()
 window = visual.Window(
         size = [width,height],
-        checkTiming = True,
+        checkTiming = False, # for macOS
         allowGUI = False,
-        fullscr = True,
-        useRetina = False,
+        fullscr = False,
+        useRetina = True,
     )
 visual_stimulus = create_32_targets(checkered=False)
 key_caps = create_32_key_caps()
@@ -294,11 +306,8 @@ aim_target_color = 'white'
 
 # Helper: build color array for the current frame using green/red colors
 def get_frame_colors(frame_val_array):
-    # frame_val_array: shape (32,), values -1 or 1
-    # key_colors: shape (32, 3)
-    # When frame value is 1  -> show the key's color
-    # When frame value is -1 -> show black (inverted color)
-    return key_colors * frame_val_array[:, np.newaxis]  # shape (32, 3)
+    colors = np.where(frame_val_array[:, np.newaxis] > 0, key_colors, np.full((32,3), -1.0))
+    return colors
 
 # "Off" state: all keys black
 off_colors = np.full((32, 3), -1.0)
