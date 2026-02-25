@@ -308,7 +308,10 @@ def get_frame_colors(frame_val_array):
     # key_colors: shape (32, 3)
     # When frame value is 1  -> show the key's color
     # When frame value is -1 -> show black (inverted color)
-    return key_colors * frame_val_array[:, np.newaxis]  # shape (32, 3)
+    # return key_colors * frame_val_array[:, np.newaxis]  
+    colors = np.where(frame_val_array[:, np.newaxis] > 0, key_colors, -1.0)
+    return colors
+# shape (32, 3)
 
 # "Off" state: all keys black
 off_colors = np.full((32, 3), -1.0)
