@@ -5,7 +5,7 @@ from scipy import signal
 import random, os, pickle
 import mne
 
-cyton_in = False
+cyton_in = True
 lsl_out = False
 width = 1536
 height = 864
@@ -16,8 +16,8 @@ n_per_class = 2
 stim_type = 'alternating' # 'alternating' or 'independent'
 subject = 1
 session = 1
-calibration_mode = False
-save_dir = f'data/cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/' # Directory to save data to
+calibration_mode = True
+save_dir = f'data-by/cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/' # Directory to save data to
 run = 1 # Run number, it is used as the random seed for the trial sequence generation
 save_file_eeg = save_dir + f'eeg_{n_per_class}-per-class_run-{run}.npy'
 save_file_aux = save_dir + f'aux_{n_per_class}-per-class_run-{run}.npy'
@@ -179,7 +179,7 @@ window = visual.Window(
         size = [width,height],
         checkTiming = False, # for macOS
         allowGUI = False,
-        fullscr = False,
+        fullscr = True,
         useRetina = True,
     )
 visual_stimulus = create_32_targets(checkered=False)
