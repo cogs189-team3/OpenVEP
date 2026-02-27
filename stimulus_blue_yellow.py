@@ -17,6 +17,12 @@ stim_type = 'alternating' # 'alternating' or 'independent'
 subject = 1
 session = 1
 calibration_mode = True
+
+# absolute path
+# script_dir = os.path.dirname(os.path.abspath(__file__))
+# save_dir = os.path.join(script_dir, f'data-by/cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/')
+
+
 save_dir = f'data-by/cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/' # Directory to save data to
 run = 1 # Run number, it is used as the random seed for the trial sequence generation
 save_file_eeg = save_dir + f'eeg_{n_per_class}-per-class_run-{run}.npy'
