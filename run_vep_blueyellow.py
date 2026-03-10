@@ -5,7 +5,7 @@ from scipy import signal
 import random, os, pickle
 import mne
 
-cyton_in = False
+cyton_in = True
 lsl_out = False
 width = 1536
 height = 864
@@ -16,8 +16,14 @@ n_per_class = 2
 stim_type = 'alternating' # 'alternating' or 'independent'
 subject = 1
 session = 1
-calibration_mode = False
-save_dir = f'data/cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/' # Directory to save data to
+calibration_mode = True
+
+# absolute path
+# script_dir = os.path.dirname(os.path.abspath(__file__))
+# save_dir = os.path.join(script_dir, f'data-by/cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/')
+
+
+save_dir = f'data-by/cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/' # Directory to save data to
 run = 1 # Run number, it is used as the random seed for the trial sequence generation
 save_file_eeg = save_dir + f'eeg_{n_per_class}-per-class_run-{run}.npy'
 save_file_aux = save_dir + f'aux_{n_per_class}-per-class_run-{run}.npy'
@@ -91,22 +97,22 @@ win.close()
 print(text_strip.shape, el_mask.shape, phases.shape)
 
 # =============================================================================
-# GREEN / RED COLOR SETUP
-# Green = [ R:-1, G: 1, B:-1 ]
-# Red   = [ R: 1, G:-1, B:-1 ]
-# Keys alternate by column: even columns (0,2,4,6) = GREEN, odd columns (1,3,5,7) = RED
+# BLUE / YELLOW COLOR SETUP
+# Blue   = [ R:-1, G:-1, B: 1 ]
+# Yellow = [ R: 1, G: 1, B:-1 ]
+# Keys alternate by column: even columns (0,2,4,6) = BLUE, odd columns (1,3,5,7) = YELLOW
 # Layout (8 cols x 4 rows, filled column by column):
-#   🟩🟥🟩🟥🟩🟥🟩🟥
-#   🟩🟥🟩🟥🟩🟥🟩🟥
-#   🟩🟥🟩🟥🟩🟥🟩🟥
-#   🟩🟥🟩🟥🟩🟥🟩🟥
+#   🟦🟨🟦🟨🟦🟨🟦🟨
+#   🟦🟨🟦🟨🟦🟨🟦🟨
+#   🟦🟨🟦🟨🟦🟨🟦🟨
+#   🟦🟨🟦🟨🟦🟨🟦🟨
 # =============================================================================
-GREEN = np.array([-1,  1, -1])
-RED   = np.array([ 1, -1, -1])
+BLUE   = np.array([-1, -1,  1])
+YELLOW = np.array([ 1,  1, -1])
 # positions are filled column by column, 4 rows each
 # so keys 0-3 = col 0, keys 4-7 = col 1, keys 8-11 = col 2, etc.
 key_colors = np.array([
-    GREEN if (i // 4) % 2 == 0 else RED
+    BLUE if (i // 4) % 2 == 0 else YELLOW
     for i in range(32)
 ], dtype=float)  # shape (32, 3)
 
@@ -125,7 +131,7 @@ def create_32_targets(size=2/8*0.7, colors=None, checkered=False, elementTex=Non
     return keys
 
 def create_32_key_caps(size=2/8*0.7, colors=[-1, -1, -1] * 32):
-    # clientSize gives the drawable area of the window in pixels, which is needed to position the key caps correctly
+    # clientSize gives the drawable area of the window in pixels, which is what we want for positioning the key caps
     w, h = window.clientSize  
     aspect_ratio = w / h
     positions = create_32_target_positions(size)
@@ -179,7 +185,7 @@ window = visual.Window(
         size = [width,height],
         checkTiming = False, # for macOS
         allowGUI = False,
-        fullscr = False,
+        fullscr = True,
         useRetina = True,
     )
 visual_stimulus = create_32_targets(checkered=False)
@@ -304,7 +310,7 @@ accuracy = 0
 predictions = []
 aim_target_color = 'white'
 
-# Helper: build color array for the current frame using green/red colors
+# Helper: build color array for the current frame using blue/yellow colors
 def get_frame_colors(frame_val_array):
     colors = np.where(frame_val_array[:, np.newaxis] > 0, key_colors, np.full((32,3), -1.0))
     return colors
@@ -319,7 +325,7 @@ if calibration_mode:
         trial_text.draw()
         accuracy_text = visual.TextStim(window, text=f'Accuracy: {accuracy*100:.2f}%', pos=(0, 1-0.07), color=aim_target_color, units='norm', height=0.07)
         accuracy_text.draw()
-        visual_stimulus.colors = off_colors  # all black between trials
+        visual_stimulus.colors = off_colors
         visual_stimulus.draw()
         key_caps.draw()
         photosensor_dot.color = np.array([-1, -1, -1])
@@ -344,7 +350,7 @@ if calibration_mode:
                         board.stop_stream()
                         board.release_session()
                     core.quit()
-                # --- GREEN/RED COLOR FLICKER ---
+                # --- BLUE/YELLOW COLOR FLICKER ---
                 visual_stimulus.colors = get_frame_colors(stimulus_frames[i_frame])
                 visual_stimulus.draw()
                 photosensor_dot.color = np.array([1, 1, 1])
@@ -428,7 +434,7 @@ else:
                 board.stop_stream()
                 board.release_session()
                 core.quit()
-            # --- GREEN/RED COLOR FLICKER ---
+            # --- BLUE/YELLOW COLOR FLICKER ---
             visual_stimulus.colors = get_frame_colors(stimulus_frames[i_frame])
             visual_stimulus.draw()
             photosensor_dot.color = np.array([1, 1, 1])
