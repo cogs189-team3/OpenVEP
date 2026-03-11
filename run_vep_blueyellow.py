@@ -16,9 +16,9 @@ n_per_class = 2
 stim_type = 'alternating' # 'alternating' or 'independent'
 subject = 1
 session = 1
-calibration_mode = False
+calibration_mode = True
 save_dir = f'data/blueyellow_cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/' # Directory to save data to
-run = 1 # Run number, it is used as the random seed for the trial sequence generation
+run = 5 # Run number, it is used as the random seed for the trial sequence generation
 save_file_eeg = save_dir + f'eeg_{n_per_class}-per-class_run-{run}.npy'
 save_file_aux = save_dir + f'aux_{n_per_class}-per-class_run-{run}.npy'
 save_file_timestamp = save_dir + f'timestamp_{n_per_class}-per-class_run-{run}.npy'
@@ -314,9 +314,10 @@ if calibration_mode:
         # Draw colored targets only (no key_caps / no letters) so calibration is clearly different from spelling
         visual_stimulus.colors = key_bg_colors * -1  # off state: invert (dark)
         visual_stimulus.draw()
+        key_caps.draw()
         photosensor_dot.color = np.array([-1, -1, -1])
         photosensor_dot.draw()
-        aim_target = visual.Rect(win=window, units="norm", width=2/8*0.7 * 1.3, height=2/8*0.7*aspect_ratio * 1.3, pos=target_positions[target_id], lineColor=aim_target_color, lineWidth=3)
+        aim_target = visual.Rect(win=window, units="norm", width=2/8*0.7 * 1.3, height=2/8*0.7*aspect_ratio * 1.3, pos=target_positions[target_id], lineColor=aim_target_color, fillColor=None, lineWidth=3)
         aim_target.draw()
         window.flip()
         core.wait(2.5)  # Time to find and look at the highlighted square before flicker

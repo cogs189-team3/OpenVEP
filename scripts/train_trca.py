@@ -39,10 +39,7 @@ for run_file in run_files:
     # Extract the run number from the file name
     run_number = int(run_file.split('-')[-1].split('.')[0])
 
-    # Skip runs 1 and 2
-    if run_number < 2:
-        continue
-    
+
     # Load the EEG trials for the current run
     eeg_trials = np.load(os.path.join(folder_path, run_file))
 
