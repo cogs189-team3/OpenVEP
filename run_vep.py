@@ -16,13 +16,8 @@ n_per_class = 2
 stim_type = 'alternating' # 'alternating' or 'independent'
 subject = 1
 session = 1
-calibration_mode = True
-
-# absolute path
-# script_dir = os.path.dirname(os.path.abspath(__file__))
-# save_dir = os.path.join(script_dir, f'data-run/cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/')
-
-save_dir = f'data-run/cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/' # Directory to save data to
+calibration_mode = False
+save_dir = f'data/blueyellow_cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/' # Directory to save data to
 run = 1 # Run number, it is used as the random seed for the trial sequence generation
 save_file_eeg = save_dir + f'eeg_{n_per_class}-per-class_run-{run}.npy'
 save_file_aux = save_dir + f'aux_{n_per_class}-per-class_run-{run}.npy'
@@ -44,10 +39,10 @@ win = psychopy.visual.Window(
         units="norm",
         fullscr=False)
 n_text = 32
-text_cap_size = 128
+text_cap_size = 64 #119  # 34
 text_strip_height = n_text * text_cap_size
 text_strip = np.full((text_strip_height, text_cap_size), np.nan)
-text = psychopy.visual.TextStim(win=win, height=0.08, font="Helvetica") # font="Courier", 0.145 to 0.008
+text = psychopy.visual.TextStim(win=win, height=0.145, font="Helvetica") # font="Courier"
 cap_rect_norm = [-(text_cap_size / 2.0) / (win.size[0] / 2.0),  # left
                      +(text_cap_size / 2.0) / (win.size[1] / 2.0),  # top
                      +(text_cap_size / 2.0) / (win.size[0] / 2.0),  # right
@@ -61,9 +56,7 @@ for (i_letter, letter) in enumerate(letters):
         rect=cap_rect_norm)
     i_rows = slice(i_letter * text_cap_size,
                     i_letter * text_cap_size + text_cap_size)
-    img = np.array(buff.image)[..., 0]
-    img_padded = np.pad(img, ((0, text_cap_size - img.shape[0]), (0, text_cap_size - img.shape[1])), mode='constant')
-    text_strip[i_rows, :] = (np.flipud(img_padded) / 255.0 * 2.0 - 1.0)
+    text_strip[i_rows, :] = (np.flipud(np.array(buff.image)[..., 0]) / 255.0 * 2.0 - 1.0)
 # need to pad 'text_strip' to pow2 to use as a texture
 new_size = max([int(np.power(2, np.ceil(np.log(dim_size) / np.log(2))))
                 for dim_size in text_strip.shape])
@@ -95,6 +88,24 @@ phases = np.array([
 win.close()
 print(text_strip.shape, el_mask.shape, phases.shape)
 
+# ── BLUE/YELLOW COLUMN COLORS ────────────────────────────────────────────────
+# Layout: 8 columns x 4 rows, elements stored column-major (col 0 rows 0-3, col 1 rows 0-3, ...)
+# Even columns (0,2,4,6) = BLUE   [r=-1, g=-1, b=1]
+# Odd  columns (1,3,5,7) = YELLOW [r=1,  g=1,  b=-1]
+def make_column_colors():
+    colors = []
+    for i_col in range(8):
+        if i_col % 2 == 0:
+            col_color = [-1, -1, 1]   # blue
+        else:
+            col_color = [1, 1, -1]    # yellow
+        for _ in range(4):
+            colors.append(col_color)
+    return np.array(colors)  # shape (32, 3)
+
+key_bg_colors = make_column_colors()  # static background colors for the keys
+# ─────────────────────────────────────────────────────────────────────────────
+
 def create_32_targets(size=2/8*0.7, colors=[-1, -1, -1] * 32, checkered=False, elementTex=None, elementMask=None, phases=None):
     width, height = window.size
     aspect_ratio = width/height
@@ -109,22 +120,12 @@ def create_32_targets(size=2/8*0.7, colors=[-1, -1, -1] * 32, checkered=False, e
     return keys
 
 def create_32_key_caps(size=2/8*0.7, colors=[-1, -1, -1] * 32):
-    # clientSize gives the drawable area of the window in pixels, which is what we need to position the key caps correctly
-    w, h = window.clientSize  
-    aspect_ratio = w / h
+    width, height = window.size
+    aspect_ratio = width/height
     positions = create_32_target_positions(size)
-    positions = [[pos[0]*w/2, pos[1]*h/2] for pos in positions]
-    keys = visual.ElementArrayStim(
-        window,
-        nElements=32,
-        elementTex=text_strip,
-        elementMask=el_mask,
-        units='pix',
-        sizes=text_strip.shape,
-        xys=positions,
-        phases=phases,
-        colors=colors
-    )
+    positions = [[pos[0]*width/2, pos[1]*height/2] for pos in positions]
+    keys = visual.ElementArrayStim(window, nElements=32, elementTex=text_strip, elementMask=el_mask, units='pix',
+                                   sizes=text_strip.shape, xys=positions, phases=phases, colors=colors)
     return keys
 
 def checkered_texure():
@@ -168,10 +169,10 @@ def create_trial_sequence(n_per_class, classes=[(7.5, 0), (8.57, 0), (10, 0), (1
 keyboard = keyboard.Keyboard()
 window = visual.Window(
         size = [width,height],
-        checkTiming = False,
+        checkTiming = True,
         allowGUI = False,
         fullscr = True,
-        useRetina = True,
+        useRetina = False,
     )
 # visual_stimulus = create_32_targets(checkered=False, elementTex=text_strip, elementMask=el_mask, phases=phases)
 visual_stimulus = create_32_targets(checkered=False)
@@ -301,21 +302,24 @@ predictions = []
 aim_target_color = 'white'
 
 if calibration_mode:
+    # Calibration: show only flickering targets (no letters) — user looks at the highlighted square
+    calib_title = visual.TextStim(window, text='CALIBRATION — Look at the highlighted square', pos=(0, 1-0.05), color='white', units='norm', height=0.06)
     for i_trial, target_id in enumerate(trial_sequence):
         print(target_id)
         trial_text = visual.TextStim(window, text=f'Trial {i_trial+1}/{len(trial_sequence)}', pos=(0, -1+0.07), color='white', units='norm', height=0.07)
         trial_text.draw()
-        accuracy_text = visual.TextStim(window, text=f'Accuracy: {accuracy*100:.2f}%', pos=(0, 1-0.07), color=aim_target_color, units='norm', height=0.07)
+        accuracy_text = visual.TextStim(window, text=f'Accuracy: {accuracy*100:.2f}%', pos=(0, 1-0.12), color=aim_target_color, units='norm', height=0.07)
         accuracy_text.draw()
-        visual_stimulus.colors = np.array([-1] * 3).T
+        calib_title.draw()
+        # Draw colored targets only (no key_caps / no letters) so calibration is clearly different from spelling
+        visual_stimulus.colors = key_bg_colors * -1  # off state: invert (dark)
         visual_stimulus.draw()
-        key_caps.draw()
         photosensor_dot.color = np.array([-1, -1, -1])
         photosensor_dot.draw()
         aim_target = visual.Rect(win=window, units="norm", width=2/8*0.7 * 1.3, height=2/8*0.7*aspect_ratio * 1.3, pos=target_positions[target_id], lineColor=aim_target_color, lineWidth=3)
         aim_target.draw()
         window.flip()
-        core.wait(0.7)
+        core.wait(2.5)  # Time to find and look at the highlighted square before flicker
         finished_displaying = False
         while not finished_displaying:
             for i_frame in range(num_frames):
@@ -333,34 +337,25 @@ if calibration_mode:
                         board.stop_stream()
                         board.release_session()
                     core.quit()
-                visual_stimulus.colors = np.array([stimulus_frames[i_frame]] * 3).T
+                # Modulate the column colors by the stimulus frame value (+1 on, -1 off)
+                frame_val = stimulus_frames[i_frame]  # shape (32,)
+                modulated_colors = key_bg_colors * frame_val[:, np.newaxis]
+                visual_stimulus.colors = modulated_colors
                 visual_stimulus.draw()
                 photosensor_dot.color = np.array([1, 1, 1])
                 photosensor_dot.draw()
+                calib_title.draw()
                 trial_text.draw()
                 aim_target.draw()
                 if core.getTime() > next_flip and i_frame != 0:
                     print('Missed frame')
-                    # skip_count += 1
-                    # visual_stimulus.colors = np.array([-1] * 3).T
-                    # visual_stimulus.draw()
-                    # window.flip()
-                    # core.wait(0.5)
-                    # visual_stimulus.colors = np.array([-1] * 3).T
-                    # visual_stimulus.draw()
-                    # photosensor_dot.color = np.array([-1, -1, -1])
-                    # photosensor_dot.draw()
-                    # trial_text.draw()
-                    # aim_target.draw()
-                    # window.flip()
-                    # core.wait(0.5)
-                    # break
                 window.flip()
             finished_displaying = True
-        visual_stimulus.colors = np.array([-1] * 3).T
+        visual_stimulus.colors = key_bg_colors * -1  # off state
         visual_stimulus.draw()
         photosensor_dot.color = np.array([-1, -1, -1])
         photosensor_dot.draw()
+        calib_title.draw()
         trial_text.draw()
         window.flip()
         if cyton_in:
@@ -414,14 +409,17 @@ if calibration_mode:
         board.release_session()
 
 else:
+    # Spelling: show full letter keyboard so user can type with their eyes
+    spelling_title = visual.TextStim(window, text='SPELLING — Look at the key you want to type', pos=(0, 1-0.05), color='white', units='norm', height=0.06)
     prediction = 0
     pred_text_string = ''
     shift = True
     # while True:
     for i_trial in range(1000):
-        pred_text = visual.TextStim(window, text=pred_text_string, pos=(0.07, 1-0.07), color='white', units='norm', height=0.1, alignText='left', wrapWidth=1.94)
+        pred_text = visual.TextStim(window, text='Your text: ' + pred_text_string, pos=(0.07, 1-0.14), color='white', units='norm', height=0.08, alignText='left', wrapWidth=1.94)
         pred_text.draw()
-        visual_stimulus.colors = np.array([-1] * 3).T
+        spelling_title.draw()
+        visual_stimulus.colors = key_bg_colors * -1  # off state
         visual_stimulus.draw()
         key_caps.draw()
         pred_target = visual.Rect(win=window, units="norm", width=2/8*0.7 * 1.3, height=2/8*0.7*aspect_ratio * 1.3, pos=target_positions[prediction], lineColor='white', lineWidth=3)
@@ -429,7 +427,7 @@ else:
         photosensor_dot.color = np.array([-1, -1, -1])
         photosensor_dot.draw()
         window.flip()
-        core.wait(0.7)
+        core.wait(2.5)  # Time to look at the key you want before flicker
         for i_frame in range(num_frames):
             next_flip = window.getFutureFlipTime()
 
@@ -440,17 +438,24 @@ else:
                 board.release_session()
                 core.quit()
             
-            visual_stimulus.colors = np.array([stimulus_frames[i_frame]] * 3).T
+            # Modulate the column colors by the stimulus frame value (+1 on, -1 off)
+            frame_val = stimulus_frames[i_frame]  # shape (32,)
+            modulated_colors = key_bg_colors * frame_val[:, np.newaxis]
+            visual_stimulus.colors = modulated_colors
             visual_stimulus.draw()
+            key_caps.draw()
             photosensor_dot.color = np.array([1, 1, 1])
             photosensor_dot.draw()
+            spelling_title.draw()
             if core.getTime() > next_flip and i_frame != 0:
                 print('Missed frame')
             window.flip()
-        visual_stimulus.colors = np.array([-1] * 3).T
+        visual_stimulus.colors = key_bg_colors * -1  # off state
         visual_stimulus.draw()
+        key_caps.draw()
         photosensor_dot.color = np.array([-1, -1, -1])
         photosensor_dot.draw()
+        spelling_title.draw()
         window.flip()
         if cyton_in:
             while len(trial_ends) <= i_trial+skip_count: # Wait for the current trial to be collected
