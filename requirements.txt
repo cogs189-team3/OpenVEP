@@ -1,2 +1,12 @@
-psychopy>=2022.1.4
-brainflow>=5.1.2
+# BCI keyboard project – main dependencies
+psychopy
+numpy
+scipy
+mne
+brainflow
+
+# For training (if brainda is installed from PyPI)
+# brainda
+
+# If you use the local brainda folder instead, from project root run:
+#   pip install -e ./brainda
