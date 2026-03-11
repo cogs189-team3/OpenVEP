@@ -17,7 +17,7 @@ stim_type = 'alternating' # 'alternating' or 'independent'
 subject = 1
 session = 1
 calibration_mode = False
-save_dir = f'data/blueyellow_cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/' # Directory to save data to
+save_dir = f'data/redgreen_cyton8_{stim_type}-vep_32-class_{stim_duration}s/sub-{subject:02d}/ses-{session:02d}/' # Directory to save data to
 run = 1 # Run number, it is used as the random seed for the trial sequence generation
 save_file_eeg = save_dir + f'eeg_{n_per_class}-per-class_run-{run}.npy'
 save_file_aux = save_dir + f'aux_{n_per_class}-per-class_run-{run}.npy'
@@ -88,17 +88,17 @@ phases = np.array([
 win.close()
 print(text_strip.shape, el_mask.shape, phases.shape)
 
-# ── BLUE/YELLOW COLUMN COLORS ────────────────────────────────────────────────
+# ── RED/GREEN COLUMN COLORS ──────────────────────────────────────────────────
 # Layout: 8 columns x 4 rows, elements stored column-major (col 0 rows 0-3, col 1 rows 0-3, ...)
-# Even columns (0,2,4,6) = BLUE   [r=-1, g=-1, b=1]
-# Odd  columns (1,3,5,7) = YELLOW [r=1,  g=1,  b=-1]
+# Even columns (0,2,4,6) = RED  [r=1, g=-1, b=-1]
+# Odd  columns (1,3,5,7) = GREEN [r=-1, g=1, b=-1]
 def make_column_colors():
     colors = []
     for i_col in range(8):
         if i_col % 2 == 0:
-            col_color = [-1, -1, 1]   # blue
+            col_color = [1, -1, -1]   # red
         else:
-            col_color = [1, 1, -1]    # yellow
+            col_color = [-1, 1, -1]   # green
         for _ in range(4):
             colors.append(col_color)
     return np.array(colors)  # shape (32, 3)
