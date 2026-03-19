@@ -1,0 +1,16 @@
+condition,run,shape,shape_ok
+blueyellow,1,"(64, 8, 350)",True
+blueyellow,2,"(64, 8, 350)",True
+blueyellow,3,"(64, 8, 350)",True
+blueyellow,4,"(64, 8, 350)",True
+blueyellow,5,"(64, 8, 350)",True
+normal,1,"(64, 8, 350)",True
+normal,2,"(64, 8, 350)",True
+normal,3,"(64, 8, 350)",True
+normal,4,"(64, 8, 350)",True
+normal,5,"(64, 8, 350)",True
+redgreen,1,"(64, 8, 350)",True
+redgreen,2,"(64, 8, 350)",True
+redgreen,3,"(64, 8, 350)",True
+redgreen,4,"(64, 8, 350)",True
+redgreen,5,"(64, 8, 350)",True
