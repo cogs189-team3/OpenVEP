@@ -147,6 +147,77 @@ def reshape_trials_by_repeat_and_class(eeg_flat, run_number, n_classes=32, n_rep
     return eeg_reshaped
 
 
+# %% [markdown]
+# #### Artifact removal
+
+# %%
+def compute_trial_artifact_metrics(trials):
+    """
+    Compute simple artifact metrics for each trial.
+
+    Parameters
+    ----------
+    trials : ndarray of shape (n_trials, n_channels, n_samples)
+
+    Returns
+    -------
+    metrics_df : DataFrame
+        One row per trial with trial-level amplitude metrics.
+    """
+    rows = []
+
+    for i in range(trials.shape[0]):
+        x = trials[i]  # shape: (channels, samples)
+
+        # Largest absolute amplitude anywhere in the trial
+        max_abs = float(np.max(np.abs(x)))
+
+        # Peak-to-peak range for each channel
+        ptp_per_channel = np.ptp(x, axis=1)
+
+        # Largest peak-to-peak range across channels
+        max_ptp = float(np.max(ptp_per_channel))
+
+        rows.append({
+            "global_trial_index": i,
+            "max_abs": max_abs,
+            "max_ptp": max_ptp,
+        })
+
+    return pd.DataFrame(rows)
+
+
+def flag_artifact_trials(metrics_df, max_abs_threshold=120.0, max_ptp_threshold=200.0):
+    """
+    Mark trials as artifacts using simple thresholds.
+
+    Parameters
+    ----------
+    metrics_df : DataFrame
+        Output of compute_trial_artifact_metrics().
+    max_abs_threshold : float
+        Reject if the largest absolute amplitude exceeds this value.
+    max_ptp_threshold : float
+        Reject if the largest peak-to-peak value exceeds this value.
+
+    Returns
+    -------
+    flagged_df : DataFrame
+        Input table with added artifact flags.
+    """
+    flagged_df = metrics_df.copy()
+
+    flagged_df["reject_max_abs"] = flagged_df["max_abs"] > max_abs_threshold
+    flagged_df["reject_max_ptp"] = flagged_df["max_ptp"] > max_ptp_threshold
+
+    flagged_df["reject_trial"] = (
+        flagged_df["reject_max_abs"] |
+        flagged_df["reject_max_ptp"]
+    )
+
+    return flagged_df
+
+
 # %%
 # Check files
 for condition_name, condition_dir in CONDITION_DIRS.items():
@@ -262,12 +333,67 @@ plt.legend()
 plt.show()
 
 # %% [markdown]
+# #### Artifact removal
+
+# %%
+artifact_metrics = compute_trial_artifact_metrics(all_trials_stim)
+
+# Simple starting thresholds
+MAX_ABS_THRESHOLD = 120.0
+MAX_PTP_THRESHOLD = 200.0
+
+artifact_flags = flag_artifact_trials(
+    metrics_df=artifact_metrics,
+    max_abs_threshold=MAX_ABS_THRESHOLD,
+    max_ptp_threshold=MAX_PTP_THRESHOLD
+)
+
+# Attach artifact flags to metadata
+trial_metadata_with_artifacts = trial_metadata.merge(
+    artifact_flags,
+    on="global_trial_index",
+    how="left"
+)
+
+print(trial_metadata_with_artifacts["reject_trial"].value_counts(dropna=False))
+
+# %%
+keep_mask = ~trial_metadata_with_artifacts["reject_trial"].values
+
+all_trials_stim_clean = all_trials_stim[keep_mask]
+trial_metadata_clean = trial_metadata_with_artifacts.loc[keep_mask].reset_index(drop=True)
+
+print("Original number of trials:", len(all_trials_stim))
+print("Rejected number of trials:", np.sum(~keep_mask))
+print("Cleaned number of trials:", len(all_trials_stim_clean))
+
+clean_trial_counts = (
+    trial_metadata_clean
+    .groupby(["condition", "run"])
+    .size()
+    .reset_index(name="n_trials_clean")
+)
+
+# %% [markdown]
 # ### Save outputs
 
 # %%
 trial_metadata.to_csv(OUTPUT_DIR / "trial_metadata.csv", index=False)
 np.save(OUTPUT_DIR / "all_trials_stim.npy", all_trials_stim)
 
+# Save cleaned outputs
+trial_metadata_clean.to_csv(OUTPUT_DIR / "trial_metadata_clean.csv", index=False)
+np.save(OUTPUT_DIR / "all_trials_stim_clean.npy", all_trials_stim_clean)
+
+# Save artifact flag table for record keeping
+trial_metadata_with_artifacts.to_csv(
+    OUTPUT_DIR / "trial_metadata_with_artifacts.csv",
+    index=False
+)
+
 print("Saved:")
 print(OUTPUT_DIR / "trial_metadata.csv")
 print(OUTPUT_DIR / "all_trials_stim.npy")
+print(OUTPUT_DIR / "trial_metadata_clean.csv")
+print(OUTPUT_DIR / "all_trials_stim_clean.npy")
+print(OUTPUT_DIR / "trial_metadata_with_artifacts.csv")
