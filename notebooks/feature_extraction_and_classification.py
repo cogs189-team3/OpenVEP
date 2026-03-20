@@ -36,6 +36,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.cross_decomposition import CCA
+import mne
 
 # %% [markdown]
 # ### Basic Setting
@@ -54,9 +55,16 @@ N_SAMPLES_STIM = 300        # Number of samples in the stimulus window
 TRIAL_DURATION = N_SAMPLES_STIM / FS   # 300 / 250 = 1.2 seconds
 
 # Number of harmonics used to build reference signals
-N_HARMONICS = 2
+N_HARMONICS = 5
 
-# (Keeping this small makes the analysis easier)
+# Filter-bank settings
+FILTER_BANKS = [
+    (6.0, 40.0),
+    (14.0, 40.0),
+    (22.0, 40.0),
+]
+
+FILTER_WEIGHTS = np.arange(1, len(FILTER_BANKS) + 1) ** (-1.25) + 0.25
 
 # %% [markdown]
 # ### Load inputs
@@ -223,6 +231,87 @@ def compute_itr(accuracy, n_classes, trial_duration):
     return itr
 
 
+# %%
+def bandpass_trial(eeg_trial, fs, low_cut, high_cut):
+    """
+    Apply band-pass filtering to one EEG trial.
+
+    Parameters
+    ----------
+    eeg_trial : ndarray of shape (n_channels, n_samples)
+        EEG data for one trial.
+    fs : int
+        Sampling rate in Hz.
+    low_cut : float
+        Low cutoff frequency.
+    high_cut : float
+        High cutoff frequency.
+
+    Returns
+    -------
+    filtered_trial : ndarray of shape (n_channels, n_samples)
+        Band-pass filtered EEG trial.
+    """
+    filtered_trial = mne.filter.filter_data(
+        data=eeg_trial,
+        sfreq=fs,
+        l_freq=low_cut,
+        h_freq=high_cut,
+        verbose=False,
+        method="fir",
+        fir_design="firwin",
+    )
+    return filtered_trial
+
+
+def preprocess_fbcca_bands(eeg_trial, fs, filter_banks):
+    """
+    Create multiple band-pass filtered versions of one trial.
+
+    Also removes the mean over time for each channel.
+    """
+    band_trials = []
+
+    for low_cut, high_cut in filter_banks:
+        x = bandpass_trial(eeg_trial, fs, low_cut, high_cut)
+
+        # Remove per-channel DC offset within this trial
+        x = x - np.mean(x, axis=1, keepdims=True)
+
+        band_trials.append(x)
+
+    return band_trials
+
+
+def fbcca_scores(eeg_trial, reference_signals, fs, filter_banks, filter_weights):
+    """
+    Compute FBCCA score for each class.
+
+    For each band:
+    - filter the EEG trial
+    - compute CCA score against each class reference
+
+    Then combine scores using:
+        sum_k w_k * r_k^2
+    """
+    band_trials = preprocess_fbcca_bands(
+        eeg_trial=eeg_trial,
+        fs=fs,
+        filter_banks=filter_banks,
+    )
+
+    n_classes = len(reference_signals)
+    band_scores = np.zeros((len(filter_banks), n_classes), dtype=float)
+
+    for band_idx, x_band in enumerate(band_trials):
+        for class_idx, ref_signal in enumerate(reference_signals):
+            r = cca_score(x_band, ref_signal)
+            band_scores[band_idx, class_idx] = r
+
+    combined_scores = np.sum(filter_weights[:, None] * (band_scores ** 2), axis=0)
+    return combined_scores, band_scores
+
+
 # %% [markdown]
 # ### Build reference signals for all classes
 
@@ -258,7 +347,8 @@ for i in range(len(trial_metadata)):
     # Get the true class label for this trial
     true_label = int(trial_metadata.loc[i, "true_label"])
 
-    # Compute one CCA score for each of the 32 classes
+    '''
+        # Compute one CCA score for each of the 32 classes
     rho_all = []
     for ref_signal in reference_signals:
         rho = cca_score(eeg_trial, ref_signal)
@@ -266,6 +356,14 @@ for i in range(len(trial_metadata)):
 
     # Convert the list to a numpy array for easier indexing
     rho_all = np.array(rho_all)
+    '''
+    rho_all, band_scores = fbcca_scores(
+        eeg_trial=eeg_trial,
+        reference_signals=reference_signals,
+        fs=FS,
+        filter_banks=FILTER_BANKS,
+        filter_weights=FILTER_WEIGHTS,
+    )
 
     # Predicted label = the class with the highest CCA score
     predicted_label = int(np.argmax(rho_all))
@@ -301,6 +399,11 @@ for i in range(len(trial_metadata)):
         "rho_target": rho_target,
         "rho_max": rho_max,
         "rho_margin": rho_margin,
+        ## below: added for FBCCA
+        "best_incorrect_score": rho_best_other,
+        "band1_target_score": float(band_scores[0, true_label]),
+        "band2_target_score": float(band_scores[1, true_label]),
+        "band3_target_score": float(band_scores[2, true_label]),
     })
 
 # %% [markdown]
@@ -337,6 +440,11 @@ run_summary = (
 
         # Number of trials in each run
         n_trials=("correct", "size"),
+
+        # added for FBCCA
+        mean_band1_target=("band1_target_score", "mean"),
+        mean_band2_target=("band2_target_score", "mean"),
+        mean_band3_target=("band3_target_score", "mean"),
     )
 )
 
