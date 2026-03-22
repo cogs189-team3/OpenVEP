@@ -287,6 +287,16 @@ plt.tight_layout()
 plt.savefig(OUTPUT_DIR / "optional_rho_vs_accuracy_by_condition.png", dpi=300)
 plt.show()
 
+# %%
+from scipy.stats import pearsonr
+
+for label in plot_order:
+    subset = run_summary[run_summary["condition_label"] == label]
+
+    r, p = pearsonr(subset["mean_rho_target"], subset["accuracy"])
+
+    print(f"{label}: r = {r:.3f}, p = {p:.3f}")
+
 # %% [markdown]
 # ### Sumary
 
