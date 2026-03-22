@@ -255,18 +255,25 @@ plt.show()
 # Does stronger target correlation tend to go with higher accuracy?
 
 # %%
+plot_order = ["Normal", "Red-Green", "Blue-Yellow"]
+palette = {
+    "Normal": "#dd8452",
+    "Red-Green": "#55a868",
+    "Blue-Yellow": "#4c72b0"
+}
+
 plt.figure(figsize=(7, 5))
 
-# Draw scatter points for each run
 sns.scatterplot(
     data=run_summary,
     x="mean_rho_target",
     y="accuracy",
     hue="condition_label",
+    hue_order=plot_order,
+    palette=palette,
     s=80
 )
 
-# Draw one regression line for each condition
 for label in plot_order:
     subset = run_summary[run_summary["condition_label"] == label]
 
@@ -276,15 +283,13 @@ for label in plot_order:
         y="accuracy",
         scatter=False,
         ci=None,
-        label=f"{label} trend"
+        color=palette[label]   # ← condition と同じ色を明示
     )
 
 plt.xlabel("Mean target CCA correlation")
 plt.ylabel("Accuracy")
 plt.title("Relationship between H1 and H3 measures by condition")
-
 plt.tight_layout()
-plt.savefig(OUTPUT_DIR / "optional_rho_vs_accuracy_by_condition.png", dpi=300)
 plt.show()
 
 # %%
@@ -296,6 +301,22 @@ for label in plot_order:
     r, p = pearsonr(subset["mean_rho_target"], subset["accuracy"])
 
     print(f"{label}: r = {r:.3f}, p = {p:.3f}")
+
+# %%
+from scipy.stats import pearsonr, spearmanr
+
+for label in plot_order:
+    subset = run_summary[run_summary["condition_label"] == label]
+
+    x = subset["mean_rho_target"]
+    y = subset["accuracy"]
+
+    r_pearson, p_pearson = pearsonr(x, y)
+    r_spearman, p_spearman = spearmanr(x, y)
+
+    print(f"{label}")
+    print(f"  Pearson  r = {r_pearson:.3f}, p = {p_pearson:.3f}")
+    print(f"  Spearman r = {r_spearman:.3f}, p = {p_spearman:.3f}")
 
 # %% [markdown]
 # ### Sumary
