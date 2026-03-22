@@ -38,6 +38,8 @@ import pandas as pd
 from sklearn.cross_decomposition import CCA
 import mne
 
+from scipy.signal import butter, filtfilt
+
 # %% [markdown]
 # ### Basic Setting
 
@@ -234,7 +236,7 @@ def compute_itr(accuracy, n_classes, trial_duration):
 # %%
 def bandpass_trial(eeg_trial, fs, low_cut, high_cut):
     """
-    Apply band-pass filtering to one EEG trial.
+    Apply band-pass filtering to one EEG trial using a Butterworth IIR filter.
 
     Parameters
     ----------
@@ -243,24 +245,22 @@ def bandpass_trial(eeg_trial, fs, low_cut, high_cut):
     fs : int
         Sampling rate in Hz.
     low_cut : float
-        Low cutoff frequency.
+        Low cutoff frequency in Hz.
     high_cut : float
-        High cutoff frequency.
+        High cutoff frequency in Hz.
 
     Returns
     -------
     filtered_trial : ndarray of shape (n_channels, n_samples)
         Band-pass filtered EEG trial.
     """
-    filtered_trial = mne.filter.filter_data(
-        data=eeg_trial,
-        sfreq=fs,
-        l_freq=low_cut,
-        h_freq=high_cut,
-        verbose=False,
-        method="fir",
-        fir_design="firwin",
+    nyq = fs / 2.0
+    b, a = butter(
+        N=4,
+        Wn=[low_cut / nyq, high_cut / nyq],
+        btype="band"
     )
+    filtered_trial = filtfilt(b, a, eeg_trial, axis=1)
     return filtered_trial
 
 

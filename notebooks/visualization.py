@@ -22,7 +22,7 @@
 # - mean target CCA correlation by condition
 # - mean CCA margin by condition
 #
-# For H2, it plots:
+# For H2 (former H3), it plots:
 # - run-level accuracy by condition
 # - run-level ITR by condition
 #
@@ -199,7 +199,7 @@ sns.pointplot(
 # Add labels and title
 plt.xlabel("Condition")
 plt.ylabel("Accuracy")
-plt.title("H3: Run-level accuracy by condition")
+plt.title("H2: Run-level accuracy by condition")
 
 # Limit the y-axis to the natural range of accuracy
 plt.ylim(0, 1)
@@ -212,7 +212,7 @@ plt.savefig(OUTPUT_DIR / "h3_accuracy.png", dpi=300)
 plt.show()
 
 # %% [markdown]
-# ### Plot H3: ITR
+# ### Plot H2: ITR
 
 # %%
 # Create a figure for H2 feature 2:
@@ -241,7 +241,7 @@ sns.pointplot(
 # Add labels and title
 plt.xlabel("Condition")
 plt.ylabel("ITR (bits/min)")
-plt.title("H3: Run-level ITR by condition")
+plt.title("H2: Run-level ITR by condition")
 
 # Save the figure
 plt.tight_layout()
@@ -251,7 +251,7 @@ plt.savefig(OUTPUT_DIR / "h3_itr.png", dpi=300)
 plt.show()
 
 # %% [markdown]
-# ### Relationship between H1 and H2
+# ### Optional Test: Relationship between H1 and H2
 # Does stronger target correlation tend to go with higher accuracy?
 
 # %%
